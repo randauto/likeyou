@@ -12,7 +12,7 @@
     <string name="thong_bao">Thông báo</string>
     <string name="check_internet_msg">Vui lòng kiểm tra lại kết nối mạng!</string>
     <string name="ok">OK</string>
-    <string name="refresh">Tải lại website</string>
+    <string name="refresh">Làm mới</string>
     <string name="back_again">Bấm lần nữa để thoát!</string>
     <string name="banner_ad_unit_id"> ca-app-pub-2815247713295476/6390569344</string>
 </resources>

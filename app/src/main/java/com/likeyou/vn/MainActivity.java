@@ -1,5 +1,6 @@
 package com.likeyou.vn;
 
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,22 +12,16 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
-import com.google.android.gms.common.api.GoogleApiClient;
 
 public class MainActivity extends AppCompatActivity {
-    // Remove the below line after defining your own ad unit ID.
-    private static final String TOAST_TEXT = "Test ads are being shown. "
-            + "To show live ads, replace the ad unit ID in res/values/strings.xml with your own ad unit ID.";
-
     private static final String HTML = "http://likeyou.vn?r=0134009a";
 
     private static final String TEL_PREFIX = "tel:";
@@ -38,11 +33,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean doubleBackToExitPressedOnce = false;
 
     private WebView wv;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    private GoogleApiClient client;
+
+    public static final int REQUEST_SELECT_FILE = 100;
+
+    public ValueCallback<Uri[]> uploadMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,12 +50,6 @@ public class MainActivity extends AppCompatActivity {
                                       }
                                   }
                 , 1000L);
-
-
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private void loadAdsView() {
@@ -75,9 +63,34 @@ public class MainActivity extends AppCompatActivity {
     private void loadWebsite() {
         this.wv = ((WebView) findViewById(R.id.webview));
         this.wv.setWebViewClient(new CustomWebViewClient());
+        this.wv.setWebChromeClient(new CustomWebChormeClient());
         this.wv.getSettings().setLoadsImagesAutomatically(true);
         this.wv.getSettings().setJavaScriptEnabled(true);
         this.wv.loadUrl(HTML);
+    }
+
+    class CustomWebChormeClient extends WebChromeClient {
+        @Override
+        public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+            // make sure there is no existing message
+            if (uploadMessage != null) {
+                uploadMessage.onReceiveValue(null);
+                uploadMessage = null;
+            }
+
+            uploadMessage = filePathCallback;
+
+            Intent intent = fileChooserParams.createIntent();
+            try {
+                startActivityForResult(intent, MainActivity.REQUEST_SELECT_FILE);
+            } catch (ActivityNotFoundException e) {
+                uploadMessage = null;
+                Toast.makeText(MainActivity.this, "Cannot open file chooser", Toast.LENGTH_LONG).show();
+                return false;
+            }
+
+            return true;
+        }
     }
 
 
@@ -95,40 +108,14 @@ public class MainActivity extends AppCompatActivity {
         this.builder.create().show();
     }
 
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    public Action getIndexApiAction() {
-        Thing object = new Thing.Builder()
-                .setName("Main Page") // TODO: Define a title for the content shown.
-                // TODO: Make sure this auto-generated URL is correct.
-                .setUrl(Uri.parse("http://[ENTER-YOUR-URL-HERE]"))
-                .build();
-        return new Action.Builder(Action.TYPE_VIEW)
-                .setObject(object)
-                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
-                .build();
-    }
-
     @Override
     public void onStart() {
         super.onStart();
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.connect();
-        AppIndex.AppIndexApi.start(client, getIndexApiAction());
     }
 
     @Override
     public void onStop() {
         super.onStop();
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.end(client, getIndexApiAction());
-        client.disconnect();
     }
 
     private void showAboutUs() {
@@ -159,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public boolean shouldOverrideUrlLoading(WebView paramWebView, String paramString) {
-            if (paramString.startsWith("tel:")) {
+            if (paramString.startsWith(TEL_PREFIX)) {
                 Intent localIntent = new Intent("android.intent.action.DIAL");
                 localIntent.setData(Uri.parse(paramString));
                 MainActivity.this.startActivity(localIntent);
@@ -251,5 +238,16 @@ public class MainActivity extends AppCompatActivity {
             this.wv = null;
         }
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_SELECT_FILE) {
+            if (uploadMessage == null){
+                return;
+            }
+            uploadMessage.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            uploadMessage = null;
+        }
     }
 }
